@@ -360,7 +360,14 @@
 //   });
 // };
 
+
+
+
+
+
+
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as MediaLibrary from 'expo-media-library';
 import { shareAsync } from 'expo-sharing';
 import { PDFDocument, rgb } from 'pdf-lib';
@@ -369,18 +376,17 @@ import { Alert, Platform } from 'react-native';
 // Helper to convert cm to points (1cm = 28.35 points)
 const cmToPoints = (cm: number) => cm * 28.35;
 
-// Helper to convert base64 to Uint8Array
+// Optimized base64 to Uint8Array converter
 const base64ToUint8Array = (base64: string) => {
   const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
 };
 
-// Polyfill for atob
+// Lightweight atob polyfill
 const atob = (input: string) => {
   const keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
   let output = '';
@@ -400,20 +406,14 @@ const atob = (input: string) => {
     chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
     chr3 = ((enc3 & 3) << 6) | enc4;
 
-    output = output + String.fromCharCode(chr1);
-
-    if (enc3 !== 64) {
-      output = output + String.fromCharCode(chr2);
-    }
-    if (enc4 !== 64) {
-      output = output + String.fromCharCode(chr3);
-    }
+    output += String.fromCharCode(chr1);
+    if (enc3 !== 64) output += String.fromCharCode(chr2);
+    if (enc4 !== 64) output += String.fromCharCode(chr3);
   }
-
   return output;
 };
 
-// Polyfill for btoa
+// Lightweight btoa polyfill
 const btoa = (str: string) => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
   let output = '';
@@ -428,36 +428,42 @@ const btoa = (str: string) => {
     let enc3 = ((b & 15) << 2) | (c >> 6);
     let enc4 = c & 63;
     
-    if (isNaN(b)) {
-      enc3 = enc4 = 64;
-    } else if (isNaN(c)) {
-      enc4 = 64;
-    }
+    if (isNaN(b)) enc3 = enc4 = 64;
+    else if (isNaN(c)) enc4 = 64;
     
-    output = output +
-      chars.charAt(enc1) + chars.charAt(enc2) +
-      chars.charAt(enc3) + chars.charAt(enc4);
+    output += chars.charAt(enc1) + chars.charAt(enc2) +
+              chars.charAt(enc3) + chars.charAt(enc4);
   }
-  
   return output;
+};
+
+// Resize images to optimal size for PDF
+const resizeImageForPDF = async (uri: string): Promise<string> => {
+  try {
+    // Target size for our 5.6cm x 7cm boxes at 300 DPI
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 661 } }], // 5.6cm * 300 DPI / 2.54 cm/inch ≈ 661px
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    return result.uri;
+  } catch (error) {
+    console.warn('Failed to resize image, using original', error);
+    return uri;
+  }
 };
 
 export const savePhotosToGallery = async (photos: string[]) => {
   try {
     const { status } = await MediaLibrary.requestPermissionsAsync();
-    
     if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Please allow access to your photos to save images'
-      );
+      Alert.alert('Permission Required', 'Please allow access to your photos to save images');
       return false;
     }
 
     for (const uri of photos) {
       await MediaLibrary.createAssetAsync(uri);
     }
-    
     return true;
   } catch (error) {
     console.error('Error saving photos:', error);
@@ -468,69 +474,215 @@ export const savePhotosToGallery = async (photos: string[]) => {
 export const savePDFToDevice = async (pdfUri: string) => {
   try {
     const { status } = await MediaLibrary.requestPermissionsAsync();
-    
     if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'Please allow access to save the PDF file'
-      );
+      Alert.alert('Permission Required', 'Please allow access to save the PDF file');
       return false;
     }
 
+    let asset;
     if (Platform.OS === 'android') {
-      // Create album if needed
+      asset = await MediaLibrary.createAssetAsync(pdfUri);
       let album = await MediaLibrary.getAlbumAsync('Moment App');
       if (!album) {
-        album = await MediaLibrary.createAlbumAsync('Moment App', pdfUri, false);
+        album = await MediaLibrary.createAlbumAsync('Moment App', asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
-      
-      // Save to album
-      const asset = await MediaLibrary.createAssetAsync(pdfUri);
-      await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-      return true;
     } else {
-      // iOS
-      await MediaLibrary.createAssetAsync(pdfUri);
-      return true;
+      asset = await MediaLibrary.createAssetAsync(pdfUri);
     }
+    return !!asset;
   } catch (error) {
     console.error('Error saving PDF:', error);
     return false;
   }
 };
 
-// Define layout type for TypeScript
-type Layout = {
-  [key: number]: { x: number; y: number; width: number; height: number }[];
-};
+// export const generateMemoryPDF_A4Layout = async (photos: string[], message: string, setProgress: unknown) => {
+//   console.log('🟡 Starting optimized PDF generation...');
+  
+//   // Create PDF document first
+//   const pdfDoc = await PDFDocument.create();
+//   const page = pdfDoc.addPage([595, 842]); // A4: 21x29.7cm in points
+  
+//   // Set light background
+//   page.drawRectangle({
+//     x: 0, y: 0, width: 595, height: 842,
+//     color: rgb(0.98, 0.98, 0.97),
+//   });
+  
+//   // Define grid parameters
+//   const cellWidth = cmToPoints(5.6); // 5.6cm
+//   const cellHeight = cmToPoints(7);  // 7cm
+//   const gridWidth = cellWidth * 2;
+//   const gridHeight = cellHeight * 3;
+//   const gridX = (595 - gridWidth) / 2;
+//   const gridY = (842 - gridHeight) / 2 + cmToPoints(1.5);
+  
+//   // Draw fold line
+//   const foldX = gridX + cellWidth;
+//   page.drawLine({
+//     start: { x: foldX, y: gridY },
+//     end: { x: foldX, y: gridY + gridHeight },
+//     thickness: 0.5,
+//     color: rgb(0.7, 0.7, 0.7),
+//     dashArray: [3, 3],
+//   });
+  
+//   // Draw grid borders
+//   for (let row = 0; row < 3; row++) {
+//     for (let col = 0; col < 2; col++) {
+//       const x = gridX + col * cellWidth;
+//       const y = gridY + (2 - row) * cellHeight;
+//       page.drawRectangle({
+//         x, y, width: cellWidth, height: cellHeight,
+//         borderColor: rgb(0.85, 0.85, 0.85), borderWidth: 0.5,
+//       });
+//     }
+//   }
+  
+//   // Define positions
+//   const positions = {
+//     a1: { x: gridX, y: gridY + cellHeight * 2, w: cellWidth, h: cellHeight },
+//     b1: { x: gridX + cellWidth, y: gridY + cellHeight * 2, w: cellWidth, h: cellHeight },
+//     a2: { x: gridX, y: gridY + cellHeight, w: cellWidth, h: cellHeight },
+//     b2: { x: gridX + cellWidth, y: gridY + cellHeight, w: cellWidth, h: cellHeight },
+//     a3: { x: gridX, y: gridY, w: cellWidth, h: cellHeight },
+//     b3: { x: gridX + cellWidth, y: gridY, w: cellWidth, h: cellHeight },
+//   };
+  
+//   // Determine layout
+//   const photoCells: string[] = [];
+//   let messageCell: string | string[] = '';
+//   let messageSpan = false;
+  
+//   switch (Math.min(photos.length, 5)) {
+//     case 1: photoCells.push('a1'); messageCell = 'a2'; break;
+//     case 2: photoCells.push('a1', 'b1'); messageCell = ['a2', 'b2']; messageSpan = true; break;
+//     case 3: photoCells.push('a1', 'b1', 'a2'); messageCell = 'b2'; break;
+//     case 4: photoCells.push('a1', 'b1', 'a2', 'b2'); messageCell = ['a3', 'b3']; messageSpan = true; break;
+//     case 5: photoCells.push('a1', 'b1', 'a2', 'b2', 'a3'); messageCell = 'b3'; break;
+//   }
+  
+//   // Resize images in parallel (only first 5)
+//   const resizeStart = Date.now();
+//   const imagesToProcess = photos.slice(0, 5).map(uri => resizeImageForPDF(uri));
+//   const resizedUris = await Promise.all(imagesToProcess);
+//   console.log(`⏱️ Resized ${resizedUris.length} images in ${Date.now() - resizeStart}ms`);
+  
+//   // Process images in parallel
+//   const imageProcessing = resizedUris.map(async (uri, i) => {
+//     try {
+//       const cell = photoCells[i];
+//       if (!cell) return;
+      
+//       const position = positions[cell as keyof typeof positions];
+//       const base64 = await FileSystem.readAsStringAsync(uri, {
+//         encoding: FileSystem.EncodingType.Base64,
+//       });
+      
+//       const bytes = base64ToUint8Array(base64);
+      
+//       let image;
+//       try {
+//         image = await pdfDoc.embedJpg(bytes);
+//       } catch {
+//         image = await pdfDoc.embedPng(bytes);
+//       }
+      
+//       const padding = 5;
+//       page.drawImage(image, {
+//         x: position.x + padding,
+//         y: position.y + padding,
+//         width: position.w - padding * 2,
+//         height: position.h - padding * 2,
+//       });
+      
+//     } catch (error) {
+//       console.error(`❌ Failed to process photo ${i + 1}:`, error);
+//     }
+//   });
+  
+//   await Promise.all(imageProcessing);
+  
+//   // Add message
+//   if (message) {
+//     let messageX, messageY, messageWidth;
+    
+//     if (messageSpan) {
+//       const cells = messageCell as string[];
+//       const pos1 = positions[cells[0] as keyof typeof positions];
+//       messageX = pos1.x + 10;
+//       messageY = pos1.y + 10;
+//       messageWidth = (pos1.w * 2) - 20;
+//     } else {
+//       const cell = messageCell as string;
+//       const position = positions[cell as keyof typeof positions];
+//       messageX = position.x + 10;
+//       messageY = position.y + 10;
+//       messageWidth = position.w - 20;
+//     }
+    
+//     page.drawText(message, {
+//       x: messageX, y: messageY, size: 12,
+//       color: rgb(0.2, 0.2, 0.2), maxWidth: messageWidth, lineHeight: 14,
+//     });
+//   }
+  
+//   // Add footer
+//   page.drawText('Fold here', { x: foldX - 25, y: gridY - 20, size: 10, color: rgb(0.5, 0.5, 0.5) });
+//   page.drawText('memory by\nMoment app', { 
+//     x: foldX + 5, y: gridY - 30, size: 10, 
+//     color: rgb(0.3, 0.3, 0.3), lineHeight: 12 
+//   });
+  
+//   // Generate PDF
+//   const pdfBytes = await pdfDoc.save();
+//   const uri = `${FileSystem.documentDirectory}memory_${Date.now()}.pdf`;
+  
+//   // Optimized save operation
+//   const binaryString = String.fromCharCode(...pdfBytes);
+//   const base64String = btoa(binaryString);
+  
+//   await FileSystem.writeAsStringAsync(uri, base64String, {
+//     encoding: FileSystem.EncodingType.Base64,
+//   });
+  
+//   console.log(`✅ PDF generated in ${Date.now() - resizeStart}ms`);
+//   return uri;
+// };
 
-export const generateMemoryPDF_A4Layout = async (photos: string[], message: string) => {
-  console.log('🟡 Starting PDF generation with film-style layout...');
+
+export const generateMemoryPDF_A4Layout = async (
+  photos: string[], 
+  message: string, 
+  progressCallback?: (progress: number) => void
+) => {
+  const startTime = Date.now();
+  console.log('🟡 Starting optimized PDF generation...');
   
-  // Create new PDF document
+  // Initial setup progress
+  if (progressCallback) progressCallback(0.1);
+  
+  // Create PDF document
   const pdfDoc = await PDFDocument.create();
-  const page = pdfDoc.addPage([595, 842]); // A4: 21x29.7cm in points (72dpi)
+  const page = pdfDoc.addPage([595, 842]); // A4: 21x29.7cm in points
   
-  // Set light background color
+  // Set light background
   page.drawRectangle({
-    x: 0,
-    y: 0,
-    width: 595,
-    height: 842,
+    x: 0, y: 0, width: 595, height: 842,
     color: rgb(0.98, 0.98, 0.97),
   });
   
   // Define grid parameters
-  const cellWidth = cmToPoints(5.6); // 5.6cm in points
-  const cellHeight = cmToPoints(7);  // 7cm in points
+  const cellWidth = cmToPoints(5.6); // 5.6cm
+  const cellHeight = cmToPoints(7);  // 7cm
   const gridWidth = cellWidth * 2;
   const gridHeight = cellHeight * 3;
-  
-  // Center the grid on the page
   const gridX = (595 - gridWidth) / 2;
-  const gridY = (842 - gridHeight) / 2 + cmToPoints(1.5); // Slightly higher for footer space
+  const gridY = (842 - gridHeight) / 2 + cmToPoints(1.5);
   
-  // Draw fold line (dashed)
+  // Draw fold line
   const foldX = gridX + cellWidth;
   page.drawLine({
     start: { x: foldX, y: gridY },
@@ -544,180 +696,146 @@ export const generateMemoryPDF_A4Layout = async (photos: string[], message: stri
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 2; col++) {
       const x = gridX + col * cellWidth;
-      const y = gridY + (2 - row) * cellHeight; // Top to bottom
-      
+      const y = gridY + (2 - row) * cellHeight;
       page.drawRectangle({
-        x,
-        y,
-        width: cellWidth,
-        height: cellHeight,
-        borderColor: rgb(0.85, 0.85, 0.85),
-        borderWidth: 0.5,
+        x, y, width: cellWidth, height: cellHeight,
+        borderColor: rgb(0.85, 0.85, 0.85), borderWidth: 0.5,
       });
     }
   }
   
-  // Define grid positions for photos and message
+  // Define positions
   const positions = {
-    a1: { x: gridX, y: gridY + cellHeight * 2, width: cellWidth, height: cellHeight },
-    b1: { x: gridX + cellWidth, y: gridY + cellHeight * 2, width: cellWidth, height: cellHeight },
-    a2: { x: gridX, y: gridY + cellHeight, width: cellWidth, height: cellHeight },
-    b2: { x: gridX + cellWidth, y: gridY + cellHeight, width: cellWidth, height: cellHeight },
-    a3: { x: gridX, y: gridY, width: cellWidth, height: cellHeight },
-    b3: { x: gridX + cellWidth, y: gridY, width: cellWidth, height: cellHeight },
+    a1: { x: gridX, y: gridY + cellHeight * 2, w: cellWidth, h: cellHeight },
+    b1: { x: gridX + cellWidth, y: gridY + cellHeight * 2, w: cellWidth, h: cellHeight },
+    a2: { x: gridX, y: gridY + cellHeight, w: cellWidth, h: cellHeight },
+    b2: { x: gridX + cellWidth, y: gridY + cellHeight, w: cellWidth, h: cellHeight },
+    a3: { x: gridX, y: gridY, w: cellWidth, h: cellHeight },
+    b3: { x: gridX + cellWidth, y: gridY, w: cellWidth, h: cellHeight },
   };
   
-  // Determine which cells get photos and which get message
+  // Determine layout
+  const photoCount = Math.min(photos.length, 5);
   const photoCells: string[] = [];
   let messageCell: string | string[] = '';
   let messageSpan = false;
   
-  switch (photos.length) {
-    case 1:
-      photoCells.push('a1');
-      messageCell = 'a2';
-      break;
-    case 2:
-      photoCells.push('a1', 'b1');
-      messageCell = ['a2', 'b2'];
-      messageSpan = true;
-      break;
-    case 3:
-      photoCells.push('a1', 'b1', 'a2');
-      messageCell = 'b2';
-      break;
-    case 4:
-      photoCells.push('a1', 'b1', 'a2', 'b2');
-      messageCell = ['a3', 'b3'];
-      messageSpan = true;
-      break;
-    case 5:
-      photoCells.push('a1', 'b1', 'a2', 'b2', 'a3');
-      messageCell = 'b3';
-      break;
-    default:
-      // Default to 3 photos if more than 5
-      photoCells.push('a1', 'b1', 'a2');
-      messageCell = 'b2';
+  switch (photoCount) {
+    case 1: photoCells.push('a1'); messageCell = 'a2'; break;
+    case 2: photoCells.push('a1', 'b1'); messageCell = ['a2', 'b2']; messageSpan = true; break;
+    case 3: photoCells.push('a1', 'b1', 'a2'); messageCell = 'b2'; break;
+    case 4: photoCells.push('a1', 'b1', 'a2', 'b2'); messageCell = ['a3', 'b3']; messageSpan = true; break;
+    case 5: photoCells.push('a1', 'b1', 'a2', 'b2', 'a3'); messageCell = 'b3'; break;
   }
   
-  // Add photos to PDF
-  for (let i = 0; i < Math.min(photos.length, 5); i++) {
+  // Resize images in parallel (only first 5)
+  if (progressCallback) progressCallback(0.2);
+  const resizeStart = Date.now();
+  const imagesToProcess = photos.slice(0, 5).map(uri => resizeImageForPDF(uri));
+  const resizedUris = await Promise.all(imagesToProcess);
+  console.log(`⏱️ Resized ${resizedUris.length} images in ${Date.now() - resizeStart}ms`);
+  
+  if (progressCallback) progressCallback(0.3);
+  
+  // Process images with progress reporting
+  for (let i = 0; i < resizedUris.length; i++) {
     try {
-      const photoUri = photos[i];
+      const uri = resizedUris[i];
       const cell = photoCells[i];
-      const position = positions[cell as keyof typeof positions];
+      if (!cell) continue;
       
-      // Read image data
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
+      const position = positions[cell as keyof typeof positions];
+      const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
       
       const bytes = base64ToUint8Array(base64);
       
-      // Try to determine image type
       let image;
       try {
-        image = await pdfDoc.embedPng(bytes);
+        image = await pdfDoc.embedJpg(bytes);
       } catch {
         try {
-          image = await pdfDoc.embedJpg(bytes);
+          image = await pdfDoc.embedPng(bytes);
         } catch (error) {
           console.error(`❌ Failed to embed photo ${i + 1}:`, error);
           continue;
         }
       }
       
-      // Draw image with 5px padding inside cell
       const padding = 5;
       page.drawImage(image, {
         x: position.x + padding,
         y: position.y + padding,
-        width: position.width - padding * 2,
-        height: position.height - padding * 2,
+        width: position.w - padding * 2,
+        height: position.h - padding * 2,
       });
       
+      // Update progress after each image
+      if (progressCallback) {
+        const currentProgress = 0.3 + ((i + 1) / resizedUris.length) * 0.5;
+        progressCallback(currentProgress);
+      }
+      
     } catch (error) {
-      console.error(`❌ Failed to add photo ${i + 1}:`, error);
+      console.error(`❌ Failed to process photo ${i + 1}:`, error);
     }
   }
   
   // Add message
   if (message) {
-    let messageX, messageY, messageWidth, messageHeight;
+    let messageX, messageY, messageWidth;
     
     if (messageSpan) {
-      // Message spans two columns
       const cells = messageCell as string[];
       const pos1 = positions[cells[0] as keyof typeof positions];
-      const pos2 = positions[cells[1] as keyof typeof positions];
-      
       messageX = pos1.x + 10;
       messageY = pos1.y + 10;
-      messageWidth = (pos1.width + pos2.width) - 20;
-      messageHeight = pos1.height - 20;
+      messageWidth = (pos1.w * 2) - 20;
     } else {
-      // Single cell message
       const cell = messageCell as string;
       const position = positions[cell as keyof typeof positions];
-      
       messageX = position.x + 10;
       messageY = position.y + 10;
-      messageWidth = position.width - 20;
-      messageHeight = position.height - 20;
+      messageWidth = position.w - 20;
     }
     
     page.drawText(message, {
-      x: messageX,
-      y: messageY,
-      size: 12,
-      color: rgb(0.2, 0.2, 0.2),
-      maxWidth: messageWidth,
-      lineHeight: 14,
+      x: messageX, y: messageY, size: 12,
+      color: rgb(0.2, 0.2, 0.2), maxWidth: messageWidth, lineHeight: 14,
     });
   }
   
-  // Add footer text
-  page.drawText('Fold here', {
-    x: foldX - 25,
-    y: gridY - 20,
-    size: 10,
-    color: rgb(0.5, 0.5, 0.5),
+  // Add footer
+  page.drawText('Fold here', { x: foldX - 25, y: gridY - 20, size: 10, color: rgb(0.5, 0.5, 0.5) });
+  page.drawText('memory by\nMoment app', { 
+    x: foldX + 5, y: gridY - 30, size: 10, 
+    color: rgb(0.3, 0.3, 0.3), lineHeight: 12 
   });
   
-  page.drawText('memory by\nMoment app', {
-    x: foldX + 5,
-    y: gridY - 30,
-    size: 10,
-    color: rgb(0.3, 0.3, 0.3),
-    lineHeight: 12,
-  });
-  
-  // Add vintage watermark
-  page.drawText('MOMENT', {
-    x: 595 / 2 - 60,
-    y: 842 / 2,
-    size: 48,
-    color: rgb(0.9, 0.9, 0.9),
-    opacity: 0.05,
-  });
-  
-  // Save PDF
+  // Finalize PDF
+  if (progressCallback) progressCallback(0.9);
   const pdfBytes = await pdfDoc.save();
   const uri = `${FileSystem.documentDirectory}memory_${Date.now()}.pdf`;
   
-  // Convert to base64 for saving
+  // FIXED: Optimized save operation without call stack overflow
   let binaryString = '';
-  for (let i = 0; i < pdfBytes.length; i++) {
-    binaryString += String.fromCharCode(pdfBytes[i]);
+  const chunkSize = 50000; // Process in chunks of 50,000 bytes
+  for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+    const chunk = pdfBytes.subarray(i, i + chunkSize);
+    binaryString += String.fromCharCode.apply(null, chunk as any);
   }
+  
   const base64String = btoa(binaryString);
   
   await FileSystem.writeAsStringAsync(uri, base64String, {
     encoding: FileSystem.EncodingType.Base64,
   });
   
-  console.log('✅ Film-style PDF saved at:', uri);
+  const duration = Date.now() - startTime;
+  console.log(`✅ PDF generated in ${duration}ms`);
+  
+  if (progressCallback) progressCallback(1.0);
   return uri;
 };
 
