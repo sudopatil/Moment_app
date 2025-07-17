@@ -1,11 +1,10 @@
-// import { useEffect, useState } from 'react';
-// import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert, Platform } from 'react-native';
+
 // import { usePhotoContext } from '@/context/PhotoContext';
+// import { generateMemoryPDF, savePDFToDevice, savePhotosToGallery, sharePDF } from '@/utils/pdfUtils';
 // import { MaterialIcons } from '@expo/vector-icons';
-// import { generateMemoryPDF, sharePDF, savePhotosToGallery, savePDFToDevice } from '@/utils/pdfUtils';
-// import * as FileSystem from 'expo-file-system';
 // import { router } from 'expo-router';
-// import React from 'react';
+// import React, { useEffect, useState } from 'react';
+// import { ActivityIndicator, Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // export default function PdfScreen() {
 //   const { photos, message, clearPhotos } = usePhotoContext();
@@ -41,7 +40,7 @@
 //     }
 //   };
 
-//  const handleSavePDF = async () => {
+//   const handleSavePDF = async () => {
 //     if (!pdfUri) return;
     
 //     setIsSaving(true);
@@ -57,7 +56,12 @@
 //           Alert.alert('PDF Saved!', 'Your memory PDF has been saved to your Photos app');
 //         }
 //       } else {
-//         // Error is handled in the utility function
+//         Alert.alert(
+//           'Save PDF', 
+//           Platform.OS === 'android' 
+//             ? 'Use the "Share" button to save the PDF to your Downloads folder'
+//             : 'Please check permissions and try again'
+//         );
 //       }
 //     } catch (error) {
 //       Alert.alert('Error', 'Failed to save PDF');
@@ -71,6 +75,8 @@
 //       const success = await savePhotosToGallery(photos);
 //       if (success) {
 //         Alert.alert('Success', 'Photos saved to your gallery!');
+//       } else {
+//         Alert.alert('Error', 'Failed to save photos. Please check permissions.');
 //       }
 //     } catch (error) {
 //       Alert.alert('Error', 'Failed to save photos to gallery');
@@ -82,8 +88,6 @@
 //     clearPhotos();
 //     router.replace('/(tabs)/');
 //   };
-
-  
 
 //   return (
 //     <View style={styles.container}>
@@ -114,13 +118,6 @@
 //             <Text style={styles.details}>
 //               {photos.length} photo{photos.length > 1 ? 's' : ''} • {message ? 'With message' : 'No message'}
 //             </Text>
-            
-//             <View style={styles.fileInfo}>
-//               <MaterialIcons name="info" size={20} color="#bbb" />
-//               <Text style={styles.fileInfoText}>
-//                 PDF saved to: {FileSystem.documentDirectory}memory.pdf
-//               </Text>
-//             </View>
 //           </View>
           
 //           <View style={styles.buttonsContainer}>
@@ -133,14 +130,16 @@
 //               <Text style={styles.buttonText}>Save Photos</Text>
 //             </TouchableOpacity>
             
-//             <TouchableOpacity 
-//               style={[styles.actionButton, styles.saveButton]}
-//               onPress={handleSavePDF}
-//               disabled={isSaving}
-//             >
-//               <MaterialIcons name="save-alt" size={24} color="white" />
-//               <Text style={styles.buttonText}>Save PDF</Text>
-//             </TouchableOpacity>
+//             {Platform.OS === 'ios' && (
+//               <TouchableOpacity 
+//                 style={[styles.actionButton, styles.saveButton]}
+//                 onPress={handleSavePDF}
+//                 disabled={isSaving}
+//               >
+//                 <MaterialIcons name="save-alt" size={24} color="white" />
+//                 <Text style={styles.buttonText}>Save PDF</Text>
+//               </TouchableOpacity>
+//             )}
 //           </View>
           
 //           <View style={styles.buttonsContainer}>
@@ -167,23 +166,180 @@
 //               <Text style={styles.savingText}>Saving to gallery...</Text>
 //             </View>
 //           )}
+          
+//           {Platform.OS === 'android' && (
+//             <View style={styles.androidTip}>
+//               <Text style={styles.tipText}>
+//                 To save the PDF to your device, use the "Share" button and select 
+//                 "Save to Downloads" from the share sheet
+//               </Text>
+//             </View>
+//           )}
 //         </>
 //       )}
 //     </View>
 //   );
 // }
 
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     backgroundColor: '#1a1a1a',
+//     padding: 20,
+//     paddingTop: 50,
+//   },
+//   title: {
+//     fontSize: 24,
+//     fontWeight: 'bold',
+//     color: 'white',
+//     textAlign: 'center',
+//     marginBottom: 40,
+//   },
+//   loadingContainer: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     gap: 20,
+//   },
+//   loadingText: {
+//     color: 'white',
+//     fontSize: 18,
+//   },
+//   errorContainer: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     gap: 20,
+//   },
+//   errorText: {
+//     color: '#ff5555',
+//     fontSize: 18,
+//     textAlign: 'center',
+//   },
+//   successContainer: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     gap: 20,
+//   },
+//   successText: {
+//     color: 'white',
+//     fontSize: 22,
+//     fontWeight: '600',
+//     textAlign: 'center',
+//   },
+//   details: {
+//     color: '#bbb',
+//     fontSize: 16,
+//   },
+//   buttonsContainer: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     marginTop: 20,
+//   },
+//   shareButton: {
+//     backgroundColor: '#333',
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 15,
+//     paddingHorizontal: 25,
+//     borderRadius: 30,
+//     gap: 10,
+//     flex: 1,
+//     marginRight: 10,
+//     justifyContent: 'center',
+//   },
+//   finishButton: {
+//     backgroundColor: '#6a1b9a',
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 15,
+//     paddingHorizontal: 25,
+//     borderRadius: 30,
+//     gap: 10,
+//     flex: 1,
+//     marginLeft: 10,
+//     justifyContent: 'center',
+//   },
+//   buttonText: {
+//     color: 'white',
+//     fontSize: 18,
+//     fontWeight: '600',
+//   },
 
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Alert, Platform } from 'react-native';
+//   actionButton: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     paddingVertical: 15,
+//     borderRadius: 30,
+//     gap: 10,
+//     flex: 1,
+//     justifyContent: 'center',
+//   },
+//   saveButton: {
+//     backgroundColor: '#2a6f97', // Different blue for save actions
+//   },
+//   fileInfo: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     marginTop: 20,
+//     backgroundColor: 'rgba(255,255,255,0.1)',
+//     padding: 10,
+//     borderRadius: 10,
+//     gap: 8,
+//   },
+//   fileInfoText: {
+//     color: '#bbb',
+//     fontSize: 12,
+//     flex: 1,
+//   },
+//   savingOverlay: {
+//     ...StyleSheet.absoluteFillObject,
+//     backgroundColor: 'rgba(0,0,0,0.7)',
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     zIndex: 10,
+//   },
+//   savingText: {
+//     color: 'white',
+//     fontSize: 18,
+//     marginTop: 20,
+//   },
+//   retryButton: {
+//     backgroundColor: '#6a1b9a',
+//     paddingVertical: 15,
+//     paddingHorizontal: 40,
+//     borderRadius: 30,
+//     marginTop: 30,
+//   },
+//   retryButtonText: {
+//     color: 'white',
+//     fontSize: 18,
+//     fontWeight: '600',
+//   },
+//   androidTip: {
+//     marginTop: 30,
+//     backgroundColor: 'rgba(255,255,255,0.07)',
+//     padding: 16,
+//     borderRadius: 10,
+//   },
+//   tipText: {
+//     color: '#bbb',
+//     fontSize: 14,
+//     textAlign: 'center',
+//   },
+// });
+
+
 import { usePhotoContext } from '@/context/PhotoContext';
+import { generateMemoryPDF_A4Layout, savePDFToDevice, savePhotosToGallery, sharePDF } from '@/utils/pdfUtils';
 import { MaterialIcons } from '@expo/vector-icons';
-import { generateMemoryPDF, sharePDF, savePhotosToGallery, savePDFToDevice } from '@/utils/pdfUtils';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ImageBackground, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function PdfScreen() {
-  const { photos, message, clearPhotos } = usePhotoContext();
+  const { photos, message, clearPhotos, setMessage } = usePhotoContext();
   const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -197,7 +353,8 @@ export default function PdfScreen() {
           return;
         }
         
-        const uri = await generateMemoryPDF(photos, message);
+        const uri = await generateMemoryPDF_A4Layout(photos, message);
+        console.log(photos,"photo");
         setPdfUri(uri);
       } catch (err) {
         setError('Failed to generate PDF. Please try again.');
@@ -262,111 +419,132 @@ export default function PdfScreen() {
 
   const handleFinish = () => {
     clearPhotos();
+    setMessage('');
     router.replace('/(tabs)/');
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Memory is Ready!</Text>
+    <ImageBackground
+      source={require('@/assets/images/moment_background.jpg')}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="light-content" />
+      <View style={styles.overlay} pointerEvents="none" />
       
-      {isGenerating ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#6a1b9a" />
-          <Text style={styles.loadingText}>Creating your memory PDF...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <MaterialIcons name="error-outline" size={60} color="#ff5555" />
-          <Text style={styles.errorText}>{error}</Text>
-          
-          <TouchableOpacity 
-            style={styles.retryButton} 
-            onPress={() => router.back()}
-          >
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <View style={styles.successContainer}>
-            <MaterialIcons name="picture-as-pdf" size={100} color="#6a1b9a" />
-            <Text style={styles.successText}>Memory PDF Created Successfully</Text>
-            <Text style={styles.details}>
-              {photos.length} photo{photos.length > 1 ? 's' : ''} • {message ? 'With message' : 'No message'}
-            </Text>
+      <View style={styles.container}>
+        <Text style={styles.title}>Your Memory is Ready!</Text>
+        
+        {isGenerating ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="rgba(139,69,19,0.7)" />
+            <Text style={styles.loadingText}>Creating your memory PDF...</Text>
           </View>
-          
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.saveButton]}
-              onPress={handleSavePhotos}
-              disabled={isSaving}
-            >
-              <MaterialIcons name="photo-library" size={24} color="white" />
-              <Text style={styles.buttonText}>Save Photos</Text>
-            </TouchableOpacity>
-            
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity 
-                style={[styles.actionButton, styles.saveButton]}
-                onPress={handleSavePDF}
-                disabled={isSaving}
-              >
-                <MaterialIcons name="save-alt" size={24} color="white" />
-                <Text style={styles.buttonText}>Save PDF</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.shareButton]} 
-              onPress={handleShare}
-            >
-              <MaterialIcons name="share" size={24} color="white" />
-              <Text style={styles.buttonText}>Share PDF</Text>
-            </TouchableOpacity>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error-outline" size={60} color="#ff5555" />
+            <Text style={styles.errorText}>{error}</Text>
             
             <TouchableOpacity 
-              style={[styles.actionButton, styles.finishButton]} 
-              onPress={handleFinish}
+              style={styles.retryButton} 
+              onPress={() => router.back()}
             >
-              <Text style={styles.buttonText}>Finish</Text>
-              <MaterialIcons name="check" size={24} color="white" />
+              <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
-          
-          {isSaving && (
-            <View style={styles.savingOverlay}>
-              <ActivityIndicator size="large" color="#6a1b9a" />
-              <Text style={styles.savingText}>Saving to gallery...</Text>
-            </View>
-          )}
-          
-          {Platform.OS === 'android' && (
-            <View style={styles.androidTip}>
-              <Text style={styles.tipText}>
-                To save the PDF to your device, use the "Share" button and select 
-                "Save to Downloads" from the share sheet
+        ) : (
+          <>
+            <View style={styles.successContainer}>
+              <MaterialIcons name="picture-as-pdf" size={100} color="rgba(139,69,19,0.7)" />
+              <Text style={styles.successText}>Memory PDF Created Successfully</Text>
+              <Text style={styles.details}>
+                {photos.length} photo{photos.length > 1 ? 's' : ''} • {message ? 'With message' : 'No message'}
               </Text>
             </View>
-          )}
-        </>
-      )}
-    </View>
+            
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.saveButton]}
+                onPress={handleSavePhotos}
+                disabled={isSaving}
+              >
+                <MaterialIcons name="photo-library" size={24} color="white" />
+                <Text style={styles.buttonText}>Save Photos</Text>
+              </TouchableOpacity>
+              
+              {Platform.OS === 'ios' && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.saveButton]}
+                  onPress={handleSavePDF}
+                  disabled={isSaving}
+                >
+                  <MaterialIcons name="save-alt" size={24} color="white" />
+                  <Text style={styles.buttonText}>Save PDF</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <View style={styles.buttonsContainer}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.shareButton]} 
+                onPress={handleShare}
+              >
+                <MaterialIcons name="share" size={24} color="white" />
+                <Text style={styles.buttonText}>Share PDF</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.finishButton]} 
+                onPress={handleFinish}
+              >
+                <Text style={styles.buttonText}>Home</Text>
+                <MaterialIcons name="check" size={24} color="white" />
+              </TouchableOpacity>
+              
+            </View>
+
+         
+            {isSaving && (
+              <View style={styles.savingOverlay}>
+                <ActivityIndicator size="large" color="rgba(139,69,19,0.7)" />
+                <Text style={styles.savingText}>Saving to gallery...</Text>
+              </View>
+            )}
+            
+            {Platform.OS === 'android' && (
+              <View style={styles.androidTip}>
+                <Text style={styles.tipText}>
+                  To save the PDF to your device, use the "Share" button and select 
+                  "Save to Downloads" from the share sheet
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: '100%',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
     padding: 20,
     paddingTop: 50,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '300',
+    letterSpacing: 2,
+    fontFamily: 'serif',
     color: 'white',
     textAlign: 'center',
     marginBottom: 40,
@@ -380,69 +558,48 @@ const styles = StyleSheet.create({
   loadingText: {
     color: 'white',
     fontSize: 18,
+    fontFamily: 'serif',
+    letterSpacing: 1,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 20,
+    padding: 20,
   },
   errorText: {
     color: '#ff5555',
     fontSize: 18,
     textAlign: 'center',
+    fontFamily: 'serif',
   },
   successContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 20,
+    padding: 20,
   },
   successText: {
     color: 'white',
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: '300',
+    fontFamily: 'serif',
+    letterSpacing: 1,
     textAlign: 'center',
   },
   details: {
-    color: '#bbb',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 16,
+    fontFamily: 'serif',
   },
   buttonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
+    gap: 15,
   },
-  shareButton: {
-    backgroundColor: '#333',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 30,
-    gap: 10,
-    flex: 1,
-    marginRight: 10,
-    justifyContent: 'center',
-  },
-  finishButton: {
-    backgroundColor: '#6a1b9a',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 25,
-    borderRadius: 30,
-    gap: 10,
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -451,23 +608,29 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   saveButton: {
-    backgroundColor: '#2a6f97', // Different blue for save actions
+    backgroundColor: 'rgba(139,69,19,0.7)',
   },
-  fileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    padding: 10,
-    borderRadius: 10,
-    gap: 8,
+  shareButton: {
+    backgroundColor: 'rgba(51, 51, 51, 0.8)',
   },
-  fileInfoText: {
-    color: '#bbb',
-    fontSize: 12,
-    flex: 1,
+  finishButton: {
+    backgroundColor: 'rgba(106, 27, 154, 0.7)',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'serif',
+    letterSpacing: 1,
   },
   savingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -480,28 +643,36 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     marginTop: 20,
+    fontFamily: 'serif',
   },
   retryButton: {
-    backgroundColor: '#6a1b9a',
+    backgroundColor: 'rgba(139,69,19,0.7)',
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 30,
     marginTop: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   retryButtonText: {
     color: 'white',
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: 'serif',
   },
   androidTip: {
     marginTop: 30,
     backgroundColor: 'rgba(255,255,255,0.07)',
     padding: 16,
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   tipText: {
-    color: '#bbb',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 14,
     textAlign: 'center',
+    fontFamily: 'serif',
+    letterSpacing: 0.5,
   },
 });

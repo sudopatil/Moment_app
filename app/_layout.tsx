@@ -37,9 +37,9 @@
 // }
 
 
-import React from 'react';
-import { Stack } from 'expo-router';
 import { PhotoProvider } from '@/context/PhotoContext';
+import { Stack } from 'expo-router';
+import React from 'react';
 
 export default function RootLayout() {
   return (
@@ -52,7 +52,7 @@ export default function RootLayout() {
         <Stack.Screen 
           name="PreviewScreen" 
           options={{ 
-            title: 'Preview',
+            title: 'Back to Camera',
             headerStyle: { backgroundColor: '#1a1a1a' },
             headerTintColor: 'white',
           }} 
@@ -60,7 +60,7 @@ export default function RootLayout() {
         <Stack.Screen 
           name="MessageScreen" 
           options={{ 
-            title: 'Add Message',
+            title: 'Back to Preview',
             headerStyle: { backgroundColor: '#1a1a1a' },
             headerTintColor: 'white',
           }} 
