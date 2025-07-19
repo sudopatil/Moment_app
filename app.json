@@ -52,7 +52,8 @@
           "savePhotosPermission": "Allow Moment App to save photos to your gallery",
           "isAccessMediaLocationEnabled": true
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
