@@ -46,8 +46,8 @@
 // }
 
 
-import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
 import React from 'react';
 
 export default function TabLayout() {
@@ -81,15 +81,15 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="explore"
+      <Tabs.Screen
+        name="aboutus"
         options={{
-          title: 'Explore',
+          title: 'About Us',
           tabBarIcon: ({ color }: { color: string }) => (
-            <MaterialIcons name="explore" size={24} color={color} />
+            <MaterialIcons name="info-outline" size={24} color={color} />
           ),
         }}
-      /> */}
+      />
     </Tabs>
   );
 }

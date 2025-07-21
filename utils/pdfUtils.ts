@@ -783,7 +783,8 @@ export const generateMemoryPDF_A4Layout = async (
         const cleanFrameBase64 = framebase64.replace(/^data:image\/png;base64,/, '');
         const frameImageBytes = Uint8Array.from(atob(cleanFrameBase64), c => c.charCodeAt(0));
         const frameImage = await pdfDoc.embedPng(frameImageBytes);
-        page.drawImage(frameImage, { x: position.x, y: position.y, width: position.w, height: position.h });
+        page.drawImage(frameImage, { x: position.x, y: position.y - 5, width: position.w, height: position.h + 10 });
+
       }
 
       if (progressCallback) {
@@ -876,12 +877,12 @@ export const generateMemoryPDF_A4Layout = async (
     });
   }
 
-  page.drawText('Fold here', { x: foldX - 25, y: gridY - 20, size: 10, color: rgb(0.5, 0.5, 0.5) });
-  page.drawText('Memory by...\nMoment app', { x: foldX + 5, y: gridY - 30, size: 10, color: rgb(0.3, 0.3, 0.3), lineHeight: 12 });
+  page.drawText('Fold here', { x: foldX - 25, y: gridY - 40, size: 10, color: rgb(0.5, 0.5, 0.5) });
+  page.drawText('Memory by...\nMoment app', { x: foldX + 40, y: gridY - 70, size: 10, color: rgb(0.3, 0.3, 0.3), lineHeight: 12 });
 
   if (progressCallback) progressCallback(0.9);
   const pdfBytes = await pdfDoc.save();
-  const uri = `${FileSystem.documentDirectory}memory_${Date.now()}.pdf`;
+  const uri = `${FileSystem.documentDirectory}Memory_${Date.now()}.pdf`;
 
   let binaryString = '';
   const chunkSize = 50000;

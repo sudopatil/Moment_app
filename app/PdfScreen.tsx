@@ -334,8 +334,6 @@
 
 
 
-
-
 import { usePhotoContext } from '@/context/PhotoContext';
 import { generateMemoryPDF_A4Layout, savePDFToDevice, savePhotosToGallery, sharePDF } from '@/utils/pdfUtils';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -527,13 +525,13 @@ export default function PdfScreen() {
               styles.buttonsContainer,
               showSuccess && styles.buttonsVisible
             ]}>
+              {/* Share PDF button moved to first position with brown color */}
               <TouchableOpacity 
-                style={[styles.actionButton, styles.saveButton]}
-                onPress={handleSavePhotos}
-                disabled={isSaving}
+                style={[styles.actionButton, styles.saveButton]} 
+                onPress={handleShare}
               >
-                <MaterialIcons name="photo-library" size={24} color="white" />
-                <Text style={styles.buttonText}>Save Photos</Text>
+                <MaterialIcons name="share" size={24} color="white" />
+                <Text style={styles.buttonText}>Share PDF</Text>
               </TouchableOpacity>
               
               {Platform.OS === 'ios' && (
@@ -552,12 +550,14 @@ export default function PdfScreen() {
               styles.buttonsContainer,
               showSuccess && styles.buttonsVisible
             ]}>
+              {/* Save Photos button moved to second position with gray color */}
               <TouchableOpacity 
-                style={[styles.actionButton, styles.shareButton]} 
-                onPress={handleShare}
+                style={[styles.actionButton, styles.shareButton]}
+                onPress={handleSavePhotos}
+                disabled={isSaving}
               >
-                <MaterialIcons name="share" size={24} color="white" />
-                <Text style={styles.buttonText}>Share PDF</Text>
+                <MaterialIcons name="photo-library" size={24} color="white" />
+                <Text style={styles.buttonText}>Save Photos</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -565,7 +565,7 @@ export default function PdfScreen() {
                 onPress={handleFinish}
               >
                 <Text style={styles.buttonText}>Home</Text>
-                <MaterialIcons name="check" size={24} color="white" />
+                <MaterialIcons name="home" size={24} color="white" />
               </TouchableOpacity>
             </View>
 
@@ -580,7 +580,7 @@ export default function PdfScreen() {
               <View style={styles.androidTip}>
                 <Text style={styles.tipText}>
                   To save the PDF to your device, use the "Share" button and select 
-                  "Save to Downloads" from the share sheet
+                  "Save to Downloads" from the share sheet or Share using "Whatsapp"
                 </Text>
               </View>
             )}
@@ -735,7 +735,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(51, 51, 51, 0.8)',
   },
   finishButton: {
-    backgroundColor: 'rgba(106, 27, 154, 0.7)',
+    backgroundColor: 'rgba(139,69,19,0.3)',
   },
   buttonText: {
     color: 'white',

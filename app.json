@@ -8,7 +8,7 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/moment_background.jpg",
+      "image": "./assets/images/loading.jpg",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
