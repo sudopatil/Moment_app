@@ -16,7 +16,7 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Moment App to access your camera to take photos",
-        "NSPhotoLibraryUsageDescription": "Allow Moment App to save photos to your gallery",
+        "NSPhotoLibraryUsageDescription": "Allow Moment App to access your photo library",
         "NSPhotoLibraryAddUsageDescription": "Allow Moment App to save photos to your gallery"
       }
     },
@@ -30,7 +30,8 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_MEDIA_LOCATION"
-      ]
+      ],
+      "package": "com.yourcompany.momentapp"
     },
     "web": {
       "bundler": "metro",
@@ -53,7 +54,14 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Moment to access your photos",
+          "cameraPermission": "Allow Moment to access your camera"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
